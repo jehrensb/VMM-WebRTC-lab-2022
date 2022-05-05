@@ -36,12 +36,19 @@ async function call() {
 async function enable_camera() {
 
   // *** TODO ***: define constraints: set video to true, audio to true
-  
+  const constraints = {audio: true, video: true};
+
   // *** TODO ***: uncomment the following log message
   console.log('Getting user media with constraints', constraints);
 
   // *** TODO ***: use getUserMedia to get a local media stream from the camera.
   //               If this fails, use getDisplayMedia to get a screen sharing stream.
+  let stream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch {
+    stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+  }
 
   document.getElementById('localVideo').srcObject = stream;
   return stream;
@@ -56,7 +63,7 @@ async function enable_camera() {
 function create_signaling_connection() {
   // *** TODO ***: create a socket by simply calling the io() function
   //               provided by the socket.io library (included in index.html).
-  // var socket = ...
+  socket = io();
   return socket;
 }
 
@@ -68,7 +75,9 @@ function add_signaling_handlers(socket) {
   // *** TODO ***: use the 'socket.on' method to create handlers for the 
   //               messages 'created', 'joined', 'full'.
   //               For all three messages, simply write a console log.
-
+  socket.on("created", () => console.log("created"));
+  socket.on("joined", () => console.log("joined"));
+  socket.on("full", () => console.log("full"));
 
   // Event handlers for call establishment signaling messages
   // --------------------------------------------------------
@@ -78,7 +87,11 @@ function add_signaling_handlers(socket) {
   // ok --> handle_ok
   // ice_candidate --> handle_remote_icecandidate
   // bye --> hangUp
-
+  socket.on("new_peer", handle_new_peer);
+  socket.on("invite", handle_invite);
+  socket.on("ok", handle_ok);
+  socket.on("ice_candidate", handle_remote_icecandidate);
+  socket.on("bye", hangUp);
 }
 
 // --------------------------------------------------------------------------
@@ -88,7 +101,7 @@ function call_room(socket) {
   if (room != '') {
       console.log('Joining room: ' + room);
       // *** TODO ***: send a join message to the server with room as argument.
-
+      socket.emit("join", room);
   }
 }
 
@@ -102,9 +115,10 @@ function create_peerconnection(localStream) {
   const pcConfiguration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
 
   // *** TODO ***: create a new RTCPeerConnection with this configuration
-  //var pc = ...
+  const pc = new RTCPeerConnection(pcConfiguration);
 
   // *** TODO ***: add all tracks of the local stream to the peerConnection
+  pc.addTrack(localStream);
 
   return pc;
 }
@@ -115,9 +129,9 @@ function create_peerconnection(localStream) {
 function add_peerconnection_handlers(peerConnection) {
 
   // *** TODO ***: add event handlers on the peerConnection
-  // onicecandidate -> handle_local_icecandidate
-  // ontrack -> handle_remote_track
-  // ondatachannel -> handle_remote_datachannel
+  peerConnection.onicecandidate = handle_local_icecandidate;
+  peerConnection.ontrack = handle_remote_track;
+  peerConnection.ondatachannel = handle_remote_datachannel;
 }
 
 // ==========================================================================
