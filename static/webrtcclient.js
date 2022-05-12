@@ -34,14 +34,21 @@ async function call() {
 // use getUserMedia or displayMedia (share screen). 
 // Then show it on localVideo.
 async function enable_camera() {
+  // Define constraints video true, audio false (because test on same computer, avoid audio feedback loop)
+  const constraints = {video: true, audio: false};
+  var stream;
 
-  // *** TODO ***: define constraints: set video to true, audio to true
-  
-  // *** TODO ***: uncomment the following log message
   console.log('Getting user media with constraints', constraints);
 
-  // *** TODO ***: use getUserMedia to get a local media stream from the camera.
-  //               If this fails, use getDisplayMedia to get a screen sharing stream.
+  try{
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Got MediaStream: ', stream);
+  } catch(error){
+    console.error('Error accessing media devices : ', error);
+    // If this fails, use getDisplayMedia to get a screen sharing stream.
+    stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+    console.log('Got DisplayStream : ', stream);
+  }
 
   document.getElementById('localVideo').srcObject = stream;
   return stream;
@@ -87,7 +94,8 @@ function call_room(socket) {
   room = prompt('Enter room name:');
   if (room != '') {
       console.log('Joining room: ' + room);
-      // *** TODO ***: send a join message to the server with room as argument.
+      // Send a join message to the server with room as argument
+      socket.emit('join', room);
 
   }
 }
@@ -101,10 +109,13 @@ function call_room(socket) {
 function create_peerconnection(localStream) {
   const pcConfiguration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
 
-  // *** TODO ***: create a new RTCPeerConnection with this configuration
-  //var pc = ...
+  // create a new RTCPeerConnection with this configuration
+  var pc = new RTCPeerConnection(pcConfiguration);
 
-  // *** TODO ***: add all tracks of the local stream to the peerConnection
+  // add all tracks of the local stream to the peerConnection
+  localStream.getTracks().forEach(track => {
+    pc.addTrack(track, localStream);
+  });
 
   return pc;
 }
@@ -114,10 +125,18 @@ function create_peerconnection(localStream) {
 // This function is called by the call function all on top of the file.
 function add_peerconnection_handlers(peerConnection) {
 
-  // *** TODO ***: add event handlers on the peerConnection
   // onicecandidate -> handle_local_icecandidate
+  peerConnection.onicecandidate = function(event) {
+    handle_local_icecandidate(event);
+  }
   // ontrack -> handle_remote_track
+  peerConnection.ontrack = function(event) {
+    handle_remote_track(event);
+  }
   // ondatachannel -> handle_remote_datachannel
+  peerConnection.ondatachannel = function(event) {
+    handle_remote_datachannel(event);
+  }
 }
 
 // ==========================================================================
