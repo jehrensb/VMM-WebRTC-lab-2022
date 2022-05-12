@@ -72,9 +72,9 @@ function create_signaling_connection() {
 function add_signaling_handlers(socket) {
   // Event handlers for joining a room. Just print console messages
   // --------------------------------------------------------------
-  // *** TODO ***: use the 'socket.on' method to create handlers for the 
-  //               messages 'created', 'joined', 'full'.
-  //               For all three messages, simply write a console log.
+  // use the 'socket.on' method to create handlers for the
+  // messages 'created', 'joined', 'full'.
+  // For all three messages, simply write a console log.
   socket.on('created', (room) => {
     console.log("Room " + room + " created !");
   });
@@ -90,7 +90,7 @@ function add_signaling_handlers(socket) {
 
   // Event handlers for call establishment signaling messages
   // --------------------------------------------------------
-  // *** TODO ***: use the 'socket.on' method to create signaling message handlers:
+  // use the 'socket.on' method to create signaling message handlers:
   // new_peer --> handle_new_peer
   socket.on('new_peer',(room) => {
     handle_new_peer(room);
