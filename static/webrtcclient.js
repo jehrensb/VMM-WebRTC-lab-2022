@@ -3,6 +3,9 @@
 // ==========================================================================
 // Global variables
 // ==========================================================================
+/**
+ * @type {RTCPeerConnection}
+ */
 var peerConnection; // WebRTC PeerConnection
 var dataChannel; // WebRTC DataChannel
 var room; // Room name: Caller and Callee have to join the same 'room'.
@@ -17,6 +20,7 @@ var socket; // Socket.io connection to the Web server for signaling.
 async function call() {
   // Enable local video stream from camera or screen sharing
   var localStream = await enable_camera();
+  console.log("localStream = ", localStream);
 
   // Create Socket.io connection for signaling and add handlers
   // Then start signaling to join a room
@@ -111,21 +115,36 @@ function call_room(socket) {
 
 // --------------------------------------------------------------------------
 // Create a new RTCPeerConnection and connect local stream
+/**
+ * 
+ * @param {MediaStream} localStream 
+ * @returns 
+ */
 function create_peerconnection(localStream) {
+  try {
   const pcConfiguration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
 
   // *** TODO ***: create a new RTCPeerConnection with this configuration
   const pc = new RTCPeerConnection(pcConfiguration);
 
   // *** TODO ***: add all tracks of the local stream to the peerConnection
-  pc.addTrack(localStream);
+  for (const track of localStream.getTracks()) {
+    pc.addTrack(track);
+  }
 
   return pc;
+  } catch(error) {
+    console.error("handle_remote_icecandidate: ", error);
+  }
 }
 
 // --------------------------------------------------------------------------
 // Set the event handlers on the peerConnection. 
 // This function is called by the call function all on top of the file.
+/**
+ * 
+ * @param {RTCPeerConnection} peerConnection 
+ */
 function add_peerconnection_handlers(peerConnection) {
 
   // *** TODO ***: add event handlers on the peerConnection
@@ -142,25 +161,38 @@ function add_peerconnection_handlers(peerConnection) {
 // Handle new peer: another peer has joined the room. I am the Caller.
 // Create SDP offer and send it to peer via the server.
 async function handle_new_peer(room){
+  try {
   console.log('Peer has joined room: ' + room + '. I am the Caller.');
   create_datachannel(peerConnection); // MUST BE CALLED BEFORE createOffer
 
   // *** TODO ***: use createOffer (with await) generate an SDP offer for peerConnection
+  const offer = await peerConnection.createOffer();
   // *** TODO ***: use setLocalDescription (with await) to add the offer to peerConnection
+  await peerConnection.setLocalDescription(offer);
   // *** TODO ***: send an 'invite' message with the offer to the peer.
-  socket.emit('invite', offer); 
+  socket.emit('invite', offer);
+  } catch(error) {
+    console.error("handle_remote_icecandidate: ", error);
+  }
 }
 
 // --------------------------------------------------------------------------
 // Caller has sent Invite with SDP offer. I am the Callee.
 // Set remote description and send back an Ok answer.
 async function handle_invite(offer) {
+  try {
   console.log('Received Invite offer from Caller: ', offer);
   // *** TODO ***: use setRemoteDescription (with await) to add the offer SDP to peerConnection 
+  await peerConnection.setRemoteDescription(offer);
   // *** TODO ***: use createAnswer (with await) to generate an answer SDP
+  const answer = await peerConnection.createAnswer();
   // *** TODO ***: use setLocalDescription (with await) to add the answer SDP to peerConnection
+  await peerConnection.setLocalDescription(answer);
   // *** TODO ***: send an 'ok' message with the answer to the peer.
-  socket.emit('ok', answer); 
+  socket.emit('ok', answer);
+  } catch(error) {
+    console.error("handle_remote_icecandidate: ", error);
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -170,6 +202,10 @@ async function handle_ok(answer) {
   console.log('Received OK answer from Callee: ', answer);
   // *** TODO ***: use setRemoteDescription (with await) to add the answer SDP 
   //               the peerConnection
+  try{
+    await peerConnection.setRemoteDescription(answer);} catch(error) {
+    console.error("handle_remote_icecandidate: ", error);
+  }
 }
 
 // ==========================================================================
@@ -179,18 +215,28 @@ async function handle_ok(answer) {
 // --------------------------------------------------------------------------
 // A local ICE candidate has been created by the peerConnection.
 // Send it to the peer via the server.
+/**
+ * 
+ * @param {RTCPeerConnectionIceEvent} event 
+ */
 async function handle_local_icecandidate(event) {
   console.log('Received local ICE candidate: ', event);
   // *** TODO ***: check if there is a new ICE candidate.
-  // *** TODO ***: if yes, send a 'ice_candidate' message with the candidate to the peer
+  if (event.candidate != null)
+    // *** TODO ***: if yes, send a 'ice_candidate' message with the candidate to the peer
+    socket.emit('ice_candidate', event.candidate)
 }
 
 // --------------------------------------------------------------------------
 // The peer has sent a remote ICE candidate. Add it to the PeerConnection.
 async function handle_remote_icecandidate(candidate) {
   console.log('Received remote ICE candidate: ', candidate);
-  // *** TODO ***: add the received remote ICE candidate to the peerConnection 
-
+  // *** TODO ***: add the received remote ICE candidate to the peerConnection
+  try {
+    await peerConnection.addIceCandidate(candidate);
+  } catch(error) {
+    console.error("handle_remote_icecandidate: ", error);
+  }
 }
 
 // ==========================================================================
@@ -200,10 +246,15 @@ async function handle_remote_icecandidate(candidate) {
 // --------------------------------------------------------------------------
 // A remote track event has been received on the peerConnection.
 // Show the remote track video on the web page.
+/**
+ * 
+ * @param {RTCTrackEvent} event 
+ */
 function handle_remote_track(event) {
   console.log('Received remote track: ', event);
   // *** TODO ***: get the first stream of the event and show it in remoteVideo
-  //document.getElementById('remoteVideo').srcObject = ...
+  // FIXME: POURQUOI EST-CE QUE event.streams EST VIDE ?
+  document.getElementById('remoteVideo').srcObject = event.streams[0]
 }
 
 // ==========================================================================
