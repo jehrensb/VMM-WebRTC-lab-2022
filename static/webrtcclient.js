@@ -104,7 +104,6 @@ function add_signaling_handlers(socket) {
 
     socket.on('ice_candidate', (candidate) => {
         handle_remote_icecandidate(candidate)
-
     })
 
     socket.on('bye', () => {
@@ -178,7 +177,6 @@ async function handle_new_peer(room) {
 
     // *** TODO ***: use createOffer (with await) generate an SDP offer for peerConnection
     const offer = await peerConnection.createOffer()
-    console.log(offer)
     // *** TODO ***: use setLocalDescription (with await) to add the offer to peerConnection
     await peerConnection.setLocalDescription(offer)
     // *** TODO ***: send an 'invite' message with the offer to the peer.
@@ -258,10 +256,16 @@ function create_datachannel(peerConnection) {
     console.log('Creating dataChannel. I am the Caller.');
 
     // *** TODO ***: create a dataChannel on the peerConnection
-    //dataChannel = ...
+    dataChannel = peerConnection.createDataChannel('chat')
 
     // *** TODO ***: connect the handlers onopen and onmessage to the handlers below
-    //dataChannel. ...
+    dataChannel.onopen = (event) => {
+        handle_datachannel_open(event)
+    }
+
+    dataChannel.onmessage = (event) => {
+        sendMessage()
+    }
 
 }
 
