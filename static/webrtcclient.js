@@ -7,6 +7,9 @@
  * @type {RTCPeerConnection}
  */
 var peerConnection; // WebRTC PeerConnection
+/**
+ * @type {RTCDataChannel}
+ */
 var dataChannel; // WebRTC DataChannel
 var room; // Room name: Caller and Callee have to join the same 'room'.
 var socket; // Socket.io connection to the Web server for signaling.
@@ -128,8 +131,10 @@ function create_peerconnection(localStream) {
   const pc = new RTCPeerConnection(pcConfiguration);
 
   // *** TODO ***: add all tracks of the local stream to the peerConnection
+  console.log("create_peerconnection: tracks = ", localStream.getTracks());
   for (const track of localStream.getTracks()) {
-    pc.addTrack(track);
+    console.log("create_peerconnection: track = ", track);
+    pc.addTrack(track, localStream);
   }
 
   return pc;
@@ -263,26 +268,36 @@ function handle_remote_track(event) {
 
 // --------------------------------------------------------------------------
 // Create a data channel: only used by the Caller.
+/**
+ *
+ * @param {RTCPeerConnection} peerConnection
+ */
 function create_datachannel(peerConnection) {
   console.log('Creating dataChannel. I am the Caller.');
 
   // *** TODO ***: create a dataChannel on the peerConnection
-  //dataChannel = ...
+  dataChannel = peerConnection.createDataChannel("chat");
 
   // *** TODO ***: connect the handlers onopen and onmessage to the handlers below
-  //dataChannel. ...
-
+  dataChannel.onopen = handle_datachannel_open;
+  dataChannel.onmessage = handle_datachannel_message;
 }
 
 // --------------------------------------------------------------------------
 // Handle remote data channel from Caller: only used by the Callee.
+/**
+ *
+ * @param {RTCDataChannelEvent} event
+ */
 function handle_remote_datachannel(event) {
   console.log('Received remote dataChannel. I am Callee.');
 
   // *** TODO ***: get the data channel from the event
+  dataChannel = event.channel;
 
   // *** TODO ***: add event handlers for onopen and onmessage events to the dataChannel
-
+  dataChannel.onopen = handle_datachannel_open;
+  dataChannel.onmessage = handle_datachannel_message;
 }
 
 // --------------------------------------------------------------------------
@@ -295,12 +310,12 @@ function handle_datachannel_open(event) {
 // --------------------------------------------------------------------------
 // Send message to peer when Send button is clicked
 function sendMessage() {
-  var message = document.getElementById('dataChannelInput').value;
+  const message = document.getElementById('dataChannelInput').value;
   document.getElementById('dataChannelInput').value = '';
   document.getElementById('dataChannelOutput').value += '        ME: ' + message + '\n';
 
   // *** TODO ***: send the message through the dataChannel
-
+  dataChannel.send(message);
 }
 
 // Handle Message from peer event on dataChannel: display the message
@@ -316,8 +331,10 @@ function handle_datachannel_message(event) {
 // HangUp: Send a bye message to peer and close all connections and streams.
 function hangUp() {
   // *** TODO ***: Write a console log
+  console.log("connection will be terminated");
 
   // *** TODO ***: send a bye message with the room name to the server
+  socket.emit("bye", room);
 
   // Switch off the local stream by stopping all tracks of the local stream
   var localVideo = document.getElementById('localVideo')
