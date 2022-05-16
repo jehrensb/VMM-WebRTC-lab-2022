@@ -69,7 +69,18 @@ function add_signaling_handlers(socket) {
     // *** TODO ***: use the 'socket.on' method to create handlers for the 
     //               messages 'created', 'joined', 'full'.
     //               For all three messages, simply write a console log.
+    socket.on('created', (socket) => {
+        console.log('Created room')
+    })
 
+    socket.on('joined', (socket) => {
+        console.log('Joined room')
+
+    })
+
+    socket.on('full', (socket) => {
+        console.log('Room is full, try later.')
+    })
 
     // Event handlers for call establishment signaling messages
     // --------------------------------------------------------
@@ -79,6 +90,26 @@ function add_signaling_handlers(socket) {
     // ok --> handle_ok
     // ice_candidate --> handle_remote_icecandidate
     // bye --> hangUp
+    socket.on('new_peer', (room) => {
+        handle_new_peer(room)
+    })
+
+    socket.on('invite', (offer) => {
+        handle_invite(offer)
+    })
+
+    socket.on('ok', (answer) => {
+        handle_ok(answer)
+    })
+
+    socket.on('ice_candidate', (candidate) => {
+        handle_remote_icecandidate(candidate)
+
+    })
+
+    socket.on('bye', () => {
+        hangUp()
+    })
 
 }
 
@@ -89,6 +120,7 @@ function call_room(socket) {
     if (room != '') {
         console.log('Joining room: ' + room);
         // *** TODO ***: send a join message to the server with room as argument.
+        socket.emit('join', room)
 
     }
 }
@@ -103,9 +135,12 @@ function create_peerconnection(localStream) {
     const pcConfiguration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
 
     // *** TODO ***: create a new RTCPeerConnection with this configuration
-    //var pc = ...
+    var pc = new RTCPeerConnection(pcConfiguration)
 
     // *** TODO ***: add all tracks of the local stream to the peerConnection
+    localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream);
+    });
 
     return pc;
 }
@@ -117,8 +152,17 @@ function add_peerconnection_handlers(peerConnection) {
 
     // *** TODO ***: add event handlers on the peerConnection
     // onicecandidate -> handle_local_icecandidate
+    peerConnection.onicecandidate = (event) => {
+        handle_local_icecandidate(event)
+    }
     // ontrack -> handle_remote_track
+    peerConnection.ontrack = (event) => {
+        handle_remote_track(event)
+    }
     // ondatachannel -> handle_remote_datachannel
+    peerConnection.ondatachannel = (event) => {
+        handle_remote_datachannel(event)
+    }
 }
 
 // ==========================================================================
