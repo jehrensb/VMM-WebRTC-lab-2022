@@ -69,8 +69,8 @@ def handle_p2pmessage(msg_type, content):
 def handle_bye(room_name):
     # *** TODO ***: Get the user_id from the request variable 
     # *** TODO ***: Use leave_room to remove the sender from the SocketIO room
-    # *** TODO ***: Remove the user from rooms_db
     # *** TODO ***: Forward the 'bye' message using p2p_message
+    # *** TODO ***: Remove the user from rooms_db
     pass
 
 # ===========================================================================
