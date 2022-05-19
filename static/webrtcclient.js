@@ -22,7 +22,7 @@ var socket; // Socket.io connection to the Web server for signaling.
 // Function call, when call button is clicked.
 async function call() {
   // Enable local video stream from camera or screen sharing
-  var localStream = await enable_camera();
+  const localStream = await enable_camera();
   console.log("localStream = ", localStream);
 
   // Create Socket.io connection for signaling and add handlers
@@ -105,7 +105,7 @@ function add_signaling_handlers(socket) {
 // Prompt user for room name then send a "join" event to server
 function call_room(socket) {
   room = prompt('Enter room name:');
-  if (room != '') {
+  if (room != null && room != '') {
       console.log('Joining room: ' + room);
       // *** TODO ***: send a join message to the server with room as argument.
       socket.emit("join", room);
@@ -124,23 +124,17 @@ function call_room(socket) {
  * @returns 
  */
 function create_peerconnection(localStream) {
-  try {
   const pcConfiguration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
 
   // *** TODO ***: create a new RTCPeerConnection with this configuration
   const pc = new RTCPeerConnection(pcConfiguration);
 
   // *** TODO ***: add all tracks of the local stream to the peerConnection
-  console.log("create_peerconnection: tracks = ", localStream.getTracks());
   for (const track of localStream.getTracks()) {
-    console.log("create_peerconnection: track = ", track);
     pc.addTrack(track, localStream);
   }
 
   return pc;
-  } catch(error) {
-    console.error("handle_remote_icecandidate: ", error);
-  }
 }
 
 // --------------------------------------------------------------------------
@@ -166,7 +160,6 @@ function add_peerconnection_handlers(peerConnection) {
 // Handle new peer: another peer has joined the room. I am the Caller.
 // Create SDP offer and send it to peer via the server.
 async function handle_new_peer(room){
-  try {
   console.log('Peer has joined room: ' + room + '. I am the Caller.');
   create_datachannel(peerConnection); // MUST BE CALLED BEFORE createOffer
 
@@ -176,16 +169,12 @@ async function handle_new_peer(room){
   await peerConnection.setLocalDescription(offer);
   // *** TODO ***: send an 'invite' message with the offer to the peer.
   socket.emit('invite', offer);
-  } catch(error) {
-    console.error("handle_remote_icecandidate: ", error);
-  }
 }
 
 // --------------------------------------------------------------------------
 // Caller has sent Invite with SDP offer. I am the Callee.
 // Set remote description and send back an Ok answer.
 async function handle_invite(offer) {
-  try {
   console.log('Received Invite offer from Caller: ', offer);
   // *** TODO ***: use setRemoteDescription (with await) to add the offer SDP to peerConnection 
   await peerConnection.setRemoteDescription(offer);
@@ -195,9 +184,6 @@ async function handle_invite(offer) {
   await peerConnection.setLocalDescription(answer);
   // *** TODO ***: send an 'ok' message with the answer to the peer.
   socket.emit('ok', answer);
-  } catch(error) {
-    console.error("handle_remote_icecandidate: ", error);
-  }
 }
 
 // --------------------------------------------------------------------------
@@ -207,10 +193,7 @@ async function handle_ok(answer) {
   console.log('Received OK answer from Callee: ', answer);
   // *** TODO ***: use setRemoteDescription (with await) to add the answer SDP 
   //               the peerConnection
-  try{
-    await peerConnection.setRemoteDescription(answer);} catch(error) {
-    console.error("handle_remote_icecandidate: ", error);
-  }
+  await peerConnection.setRemoteDescription(answer);
 }
 
 // ==========================================================================
@@ -237,11 +220,7 @@ async function handle_local_icecandidate(event) {
 async function handle_remote_icecandidate(candidate) {
   console.log('Received remote ICE candidate: ', candidate);
   // *** TODO ***: add the received remote ICE candidate to the peerConnection
-  try {
-    await peerConnection.addIceCandidate(candidate);
-  } catch(error) {
-    console.error("handle_remote_icecandidate: ", error);
-  }
+  await peerConnection.addIceCandidate(candidate);
 }
 
 // ==========================================================================
@@ -337,15 +316,26 @@ function hangUp() {
   socket.emit("bye", room);
 
   // Switch off the local stream by stopping all tracks of the local stream
-  var localVideo = document.getElementById('localVideo')
-  var remoteVideo = document.getElementById('remoteVideo')
+  const localVideo = document.getElementById('localVideo')
+  const remoteVideo = document.getElementById('remoteVideo')
   // *** TODO ***: remove the tracks from localVideo and remoteVideo
+  localVideo.srcObject.getTracks().forEach(track => track.stop());
+  remoteVideo.srcObject.getTracks().forEach(track => track.stop());
 
   // *** TODO ***: set localVideo and remoteVideo source objects to null
+  localVideo.srcObject = null;
+  remoteVideo.srcObject = null;
 
   // *** TODO ***: close the peerConnection and set it to null
+  peerConnection.ontrack = null;
+  peerConnection.onicecandidate = null;
+  peerConnection.ondatachannel = null;
+  peerConnection.close();
+  peerConnection = null;
 
   // *** TODO ***: close the dataChannel and set it to null
+  dataChannel.close();
+  dataChannel = null;
 
   document.getElementById('dataChannelOutput').value += '*** Channel is closed ***\n';
 }
