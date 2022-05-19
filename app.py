@@ -2,8 +2,6 @@ from flask import Flask, request, session
 from flask_socketio import SocketIO, emit, send, join_room, leave_room
 from collections import defaultdict
 
-from matplotlib import use
-
 # ===========================================================================
 # 'Database' to store room of each user: user_id -> room_name
 rooms_db = {}
@@ -68,7 +66,7 @@ def handle_p2pmessage(msg_type, content):
     print(
         f"Received {msg_type} message: {content} from user: {user_id} in room {room_name}")
 
-    emit(msg_type, content, room=room_name, broadcast=True, include_self=True)
+    emit(msg_type, content, room=room_name, broadcast=True, include_self=False)
 
 
 @socketio.on('invite')
@@ -87,8 +85,8 @@ def handle_ice_candidate(candidate):
 def handle_bye(room_name):
     user_id = request.sid
     leave_room(room_name)
-    del rooms_db[user_id]
     handle_p2pmessage('bye', room_name)
+    del rooms_db[user_id]
     pass
 
 
